@@ -1,0 +1,8 @@
+web3>=6.15,<8
+py-solc-x>=2.0.2
+eth-account>=0.10
+python-dotenv>=1.0
+chromadb>=0.5
+sentence-transformers>=2.7
+langchain-ollama>=0.1.0
+flask>=3.0

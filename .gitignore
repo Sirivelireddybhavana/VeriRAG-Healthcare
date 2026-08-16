@@ -1,0 +1,46 @@
+# =========================================================
+# VeriRAG Healthcare - Git Ignore
+# =========================================================
+
+# ---------- Environment / Secrets ----------
+.env
+
+# ---------- Python ----------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ---------- Virtual Environment ----------
+venv/
+.venv/
+
+# ---------- ChromaDB ----------
+vector_db/healthcare_chroma_db/
+
+# ---------- Ganache Local Blockchain Data ----------
+ganache_data/
+
+# ---------- Local Blockchain Deployment Addresses ----------
+blockchain/hash_registry_address.json
+blockchain/merkle_registry_address.json
+
+# ---------- Generated Merkle Tree Files ----------
+merkle/merkle_tree.pkl
+merkle/merkle_index.json
+merkle/merkle_root.txt
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+
+# ---------- Operating System ----------
+.DS_Store
+Thumbs.db
+
+# ---------- Logs ----------
+*.log
+
+# ---------- Temporary Files ----------
+*.tmp
+*.temp

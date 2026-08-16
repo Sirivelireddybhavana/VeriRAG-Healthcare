@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>VeriRAG Healthcare</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- ================= HEADER ================= -->
+    <header>
+        <h1>
+            VeriRAG
+            <span class="subtitle">Healthcare</span>
+        </h1>
+
+        <p class="tagline">
+            Blockchain-verified retrieval-augmented generation
+        </p>
+    </header>
+
+
+    <!-- ================= QUERY FORM ================= -->
+    <form method="POST" class="query-form">
+
+        <input
+            type="text"
+            name="query"
+            placeholder="Ask a question, e.g. Which patients were diagnosed with diabetes?"
+            value="{{ query }}"
+            autofocus
+            required
+        >
+
+        <button type="submit">
+            Ask Question
+        </button>
+
+    </form>
+
+
+    <!-- ================= ERROR ================= -->
+    {% if error %}
+
+    <div class="alert-error">
+        {{ error }}
+    </div>
+
+    {% endif %}
+
+
+    <!-- ================= RESPONSE ================= -->
+    {% if response %}
+
+    <section class="results">
+
+
+        <!-- ==========================================
+             TRUST SCORE
+             ========================================== -->
+
+        {% if response.trust_score_percent is none %}
+
+        <!-- OUT-OF-SCOPE RESPONSE -->
+
+        <div class="trust-score-card">
+
+            <div class="trust-score-value">
+                N/A
+            </div>
+
+            <div class="trust-score-label">
+                Trust Score: N/A
+            </div>
+
+        </div>
+
+        {% else %}
+
+        <!-- NORMAL VERIFIED RESPONSE -->
+
+        <div class="trust-score-card
+            trust-{{
+                'high'
+                if response.trust_score_percent >= 80
+                else
+                (
+                    'mid'
+                    if response.trust_score_percent >= 40
+                    else 'low'
+                )
+            }}">
+
+            <div class="trust-score-value">
+                {{ "%.0f"|format(response.trust_score_percent) }}%
+            </div>
+
+            <div class="trust-score-label">
+                Trust Score
+                ({{ response.verified_records|length }}
+                /
+                {{ response.retrieved_count }}
+                verified)
+            </div>
+
+        </div>
+
+        {% endif %}
+
+
+        <!-- ==========================================
+             FINAL ANSWER
+             ========================================== -->
+
+        <h2>
+            Final Answer
+        </h2>
+
+        <div class="answer-box">
+            {{ response.answer }}
+        </div>
+
+
+        <!-- ==========================================
+             OUT-OF-SCOPE INFORMATION
+             ========================================== -->
+
+        {% if response.trust_score_percent is none %}
+
+        <div class="scope-status">
+
+            <p>
+                <strong>Retrieved Records:</strong>
+                0
+            </p>
+
+            <p>
+                <strong>Verification:</strong>
+                Not performed (outside the scope to perform verification)
+            </p>
+
+        </div>
+
+        {% else %}
+
+
+        <!-- ==========================================
+             RETRIEVED RECORDS
+             ========================================== -->
+
+        <h2>
+            Retrieved Records &amp; Verification Evidence
+        </h2>
+
+
+        {% if response.results %}
+
+        <div class="records-grid">
+
+            {% for res in response.results %}
+
+            <div class="record-card
+                {{ 'verified' if res.verified else 'not-verified' }}">
+
+
+                <!-- RECORD ID -->
+
+                <div class="record-id">
+                    {{ res.record_id }}
+                </div>
+
+
+                <!-- VERIFICATION DETAILS -->
+
+                <ul class="verification-list">
+
+
+                    <!-- HASH -->
+
+                    <li class="
+                        {{ 'ok'
+                           if res.hash_recompute_ok
+                           else 'fail' }}
+                    ">
+
+                        Hash Verified
+
+                        {{
+                            '✓'
+                            if res.hash_recompute_ok
+                            else '✗'
+                        }}
+
+                    </li>
+
+
+                    <!-- MERKLE -->
+
+                    <li class="
+                        {{ 'ok'
+                           if res.merkle_ok
+                           else 'fail' }}
+                    ">
+
+                        Merkle Verified
+
+                        {{
+                            '✓'
+                            if res.merkle_ok
+                            else '✗'
+                        }}
+
+                        <span class="proof-length">
+
+                            (proof length:
+                            {{ res.proof_length }})
+
+                        </span>
+
+                    </li>
+
+
+                    <!-- HASH REGISTRY -->
+
+                    <li class="
+                        {{
+                            'ok'
+                            if res.hash_registry_status
+                            else
+                            (
+                                'neutral'
+                                if res.hash_registry_status is none
+                                else 'fail'
+                            )
+                        }}
+                    ">
+
+                        {% if res.hash_registry_status is none %}
+
+                            HashRegistry:
+                            not individually registered
+                            (skipped)
+
+                        {% else %}
+
+                            HashRegistry
+
+                            {{
+                                'Match ✓'
+                                if res.hash_registry_status
+                                else 'Mismatch ✗'
+                            }}
+
+                        {% endif %}
+
+                    </li>
+
+                </ul>
+
+
+                <!-- FINAL VERIFICATION STATUS -->
+
+                <div class="final-status">
+
+                    {{
+                        'VERIFIED'
+                        if res.verified
+                        else 'NOT VERIFIED'
+                    }}
+
+                </div>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+
+        <!-- ==========================================
+             MERKLE ROOT DETAILS
+             ========================================== -->
+
+        <details class="root-info">
+
+            <summary>
+                On-chain Merkle root details
+            </summary>
+
+
+            {% if response.results %}
+
+            <p>
+                <strong>On-chain root:</strong>
+
+                <code>
+                    {{
+                        response.results[0].on_chain_root_hex
+                    }}
+                </code>
+            </p>
+
+
+            <p>
+                <strong>Local root:</strong>
+
+                <code>
+                    {{
+                        response.results[0].local_root_hex
+                    }}
+                </code>
+            </p>
+
+            {% else %}
+
+            <p>
+                On-chain root: N/A
+            </p>
+
+            <p>
+                Local root: N/A
+            </p>
+
+            {% endif %}
+
+        </details>
+
+
+        {% else %}
+
+        <!-- NO RECORDS -->
+
+        <div class="no-records">
+
+            No retrieved records were available.
+
+        </div>
+
+        {% endif %}
+
+
+        {% endif %}
+
+    </section>
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>
