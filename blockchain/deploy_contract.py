@@ -41,12 +41,15 @@ def deploy(abi, bytecode):
     signed = w3.eth.account.sign_transaction(tx, private_key=account.key)
     tx_hash = send_raw(w3, signed)
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    if receipt.status != 1:
+        raise RuntimeError(
+            f"[deploy_contract] Deployment REVERTED (tx {tx_hash.hex()})."
+    )
     print(f"[deploy_contract] HashRegistry deployed at {receipt.contractAddress}")
     save_contract_artifact(config.HASH_REGISTRY_ADDRESS_PATH, receipt.contractAddress, abi)
     return w3, account, w3.eth.contract(address=receipt.contractAddress, abi=abi)
 
-
-def register_sample(w3, account, contract, sample_size: int, batch_size: int = 200):
+def register_sample(w3, account, contract, sample_size: int, batch_size: int = 40):
     records = load_records_with_ids(config.DATASET_CSV_PATH)
     records.sort(key=lambda r: r["record_id"])
     sample = records if not sample_size else records[:sample_size]
@@ -58,12 +61,17 @@ def register_sample(w3, account, contract, sample_size: int, batch_size: int = 2
         tx = contract.functions.storeHashesBatch(ids, hashes).build_transaction({
             "from": account.address,
             "nonce": w3.eth.get_transaction_count(account.address),
-            "gas": 6_000_000,
             "gasPrice": w3.eth.gas_price,
         })
+        tx["gas"] = int(w3.eth.estimate_gas(tx) * 1.2)
         signed = w3.eth.account.sign_transaction(tx, private_key=account.key)
         tx_hash = send_raw(w3, signed)
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+        if receipt.status != 1:
+            raise RuntimeError(
+                f"[deploy_contract] Batch registration REVERTED at block {receipt.blockNumber} "
+                f"(tx {tx_hash.hex()}). Check gas limit or contract require() conditions."
+            )
         print(f"[deploy_contract] Registered {len(batch)} hashes "
               f"({start + len(batch)}/{len(sample)}). Block {receipt.blockNumber}")
 
